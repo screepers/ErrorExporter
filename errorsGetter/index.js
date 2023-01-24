@@ -130,7 +130,7 @@ async function handle() {
 cron.schedule('0 * * * *', () => handle());
 
 app.get('/', (req, res) => {
-  const errors = fs.readFileSync('./errors.json')
+  const errors = fs.readFileSync('./logs/errors.json')
   res.send({ result: true, errors: JSON.parse(errors) })
 })
 
