@@ -12,7 +12,7 @@ const port = 10002
 
 import { WebhookClient } from 'discord.js';
 const usingDiscordWebhook = process.env.DISCORD_WEBHOOK_URL !== undefined && process.env.DISCORD_WEBHOOK_URL !== ''
-let webhookClient
+let webhookClient = null
 if (usingDiscordWebhook) {
   webhookClient = new WebhookClient({ url: process.env.DISCORD_WEBHOOK_URL });
 }
@@ -39,7 +39,8 @@ if (process.env.NODE_ENV !== 'production') {
 
 function writeErrorsByCount(errors) {
   const errorByCount = []
-  for (const error of errors) {
+  for (let error of errors) {
+    error = error.replaceAll("&#39;","")
     const index = errorByCount.findIndex(e => e.stack === error)
     if (index === -1) errorByCount.push({ stack: error, count: 1 })
     else errorByCount[index].count++
@@ -95,7 +96,7 @@ async function handle() {
   const errorByCount = writeErrorsByCount(errors)
   if (usingDiscordWebhook) {
     const webhookClient = new WebhookClient({ url: process.env.DISCORD_WEBHOOK_URL });
-    const text = errorByCount.map(e => `${e.count}x ${e.stack}`).join(' \r\n ')
+    const text = errorByCount.map(e => `${e.count}x ${e.stack}\r\n\r\n`).join('')
     if (text) webhookClient.send({
       content: text,
       username: 'The-International - Error Exporter',

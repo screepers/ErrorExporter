@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node errorsGetter/index.js",
-    "start-docker": "docker-compose up -d"
+    "start:docker": "docker-compose build && docker-compose up -d"
   },
   "repository": {
     "type": "git",

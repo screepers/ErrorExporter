@@ -6,3 +6,5 @@ services:
     restart: unless-stopped
     ports:
       - 10002:10002
+    volumes:
+      - ./errors.json:/errors.json:rw
