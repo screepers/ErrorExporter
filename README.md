@@ -1,2 +1,7 @@
 # ErrorExporter
-An error exporter instead of email
+
+An email error exporter replacement
+
+1. Requirements
+
+- Node 16.9 or higher

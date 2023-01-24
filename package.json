@@ -1,0 +1,29 @@
+{
+  "name": "errorexporter",
+  "version": "1.0.0",
+  "description": "An error exporter instead of email",
+  "main": "index.js",
+  "scripts": {
+    "start": "node errorsGetter/index.js",
+    "start-docker": "docker-compose up -d"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/screepers/ErrorExporter.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/screepers/ErrorExporter/issues"
+  },
+  "homepage": "https://github.com/screepers/ErrorExporter#readme",
+  "dependencies": {
+    "discord.js": "^14.7.1",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "node-cron": "^3.0.2",
+    "screeps-api": "^1.16.0",
+    "winston": "^3.8.2"
+  },
+  "type": "module"
+}
