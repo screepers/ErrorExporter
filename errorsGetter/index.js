@@ -112,8 +112,8 @@ async function handle() {
   if (usingDiscordWebhook) {
     const webhookClient = new WebhookClient({ url: process.env.DISCORD_WEBHOOK_URL });
     function generateText(e) {
-      const lastSeen = `Last seen at **${e.lastSeen.date}** by **${e.lastSeen.user}**\r\n`;
-      const count = `Count: **${e.count}x**\r\n`;
+      const lastSeen = `Last seen at ${e.lastSeen.date}, by ${e.lastSeen.user}\r\n`;
+      const count = `Count: ${e.count}x\r\n`;
       const stack = `\`\`\`json\r\n${e.stack}\`\`\``;
       return lastSeen + count + stack + "\r\n\r\n\r\n"
     }
