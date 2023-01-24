@@ -26,8 +26,8 @@ const logger = winston.createLogger({
     winston.format.prettyPrint(),
   ),
   transports: [
-    new winston.transports.File({ filename: 'error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'combined.log' }),
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'logs/combined.log' }),
   ],
 });
 
@@ -37,29 +37,43 @@ if (process.env.NODE_ENV !== 'production') {
   }));
 }
 
-function writeErrorsByCount(errors) {
+if (!fs.existsSync("./logs")) fs.mkdirSync("./logs")
+function writeErrorsByCount(userErrors) {
   const errorByCount = []
-  for (let error of errors) {
-    error = error.replaceAll("&#39;","")
-    const index = errorByCount.findIndex(e => e.stack === error)
-    if (index === -1) errorByCount.push({ stack: error, count: 1 })
-    else errorByCount[index].count++
+  for (let user in userErrors) {
+    for (let error of userErrors[user]) {
+      const lastSeen = {
+        date: new Date().toUTCString(),
+        user
+      }
+
+      error = error.replaceAll("&#39;", "")
+      const index = errorByCount.findIndex(e => e.stack === error)
+      if (index === -1) errorByCount.push({ stack: error, count: 1, lastSeen })
+      else {
+        errorByCount[index].count++
+        errorByCount[index].lastSeen = lastSeen
+      }
+    }
   }
 
-  const oldErrors = fs.existsSync("./errors.json") ? JSON.parse(fs.readFileSync('./errors.json')) : []
+  const oldErrors = fs.existsSync("./logs/errors.json") ? JSON.parse(fs.readFileSync('./logs/errors.json')) : []
   for (let i = 0; i < errorByCount.length; i++) {
     const error = errorByCount[i];
     const oldIndex = oldErrors.findIndex(e => e.stack === error.stack)
     const index = errorByCount.findIndex(e => e.stack === error.stack)
 
-    if (oldIndex === -1) oldErrors.push({ stack: error.stack, count: errorByCount[index].count })
-    else oldErrors[oldIndex].count += errorByCount[index].count
+    if (oldIndex === -1) oldErrors.push({ stack: error.stack, count: errorByCount[index].count, lastSeen: errorByCount[index].lastSeen })
+    else {
+      oldErrors[oldIndex].count += errorByCount[index].count
+      oldErrors[oldIndex].lastSeen = errorByCount[index].lastSeen
+    }
   }
 
   oldErrors.sort((a, b) => b.count - a.count)
   errorByCount.sort((a, b) => b.count - a.count)
 
-  fs.writeFileSync('./errors.json', JSON.stringify(oldErrors))
+  fs.writeFileSync('./logs/errors.json', JSON.stringify(oldErrors))
   return errorByCount
 }
 
@@ -68,8 +82,9 @@ async function handle() {
   console.log('/------------------------')
   console.log(new Date())
 
-  const errors = []
+  const errors = {}
   for (const user of users) {
+    if (!errors[user.name]) errors[user.name] = []
     const api = new ScreepsAPI(user)
     const getResult = await api.segment.get(user.segment, user.shard)
     if (!getResult.ok || getResult.ok !== 1 || getResult.data === null) {
@@ -89,14 +104,20 @@ async function handle() {
       continue;
     };
 
-    errors.push(...data.errors)
+    errors[user.name].push(...data.errors)
     logger.info(`Added ${data.errors.length} errors from ${user.name} to error array`)
   }
 
   const errorByCount = writeErrorsByCount(errors)
   if (usingDiscordWebhook) {
     const webhookClient = new WebhookClient({ url: process.env.DISCORD_WEBHOOK_URL });
-    const text = errorByCount.map(e => `${e.count}x ${e.stack}\r\n\r\n`).join('')
+    function generateText(e) {
+      const lastSeen = `Last seen at **${e.lastSeen.date}** by **${e.lastSeen.user}**\r\n`;
+      const count = `Count: **${e.count}x**\r\n`;
+      const stack = `\`\`\`json\r\n${e.stack}\`\`\``;
+      return lastSeen + count + stack + "\r\n\r\n\r\n"
+    }
+    const text = errorByCount.map(e => generateText(e)).join('')
     if (text) webhookClient.send({
       content: text,
       username: 'The-International - Error Exporter',
