@@ -1,6 +1,10 @@
 import * as dotenv from 'dotenv' // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
 dotenv.config()
 
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 import express from 'express'
 import cron from "node-cron"
 import { ScreepsAPI } from 'screeps-api';
@@ -26,7 +30,7 @@ const logger = winston.createLogger({
     winston.format.prettyPrint(),
   ),
   transports: [
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'logs/errors.log', level: 'error' }),
     new winston.transports.File({ filename: 'logs/combined.log' }),
   ],
 });
@@ -141,6 +145,26 @@ app.get('/', (req, res) => {
 app.get('/errors', (req, res) => {
   const errors = fs.readFileSync('./logs/errors.json')
   res.json(JSON.parse(errors))
+})
+
+app.get('/logs/:name', function (req, res, next) {
+  var options = {
+    root: join(__dirname, '../logs'),
+    dotfiles: 'deny',
+    headers: {
+      'x-timestamp': Date.now(),
+      'x-sent': true
+    }
+  }
+
+  var fileName = req.params.name
+  res.sendFile(fileName, options, function (err) {
+    if (err) {
+      next(err)
+    } else {
+      console.log('Sent:', fileName)
+    }
+  })
 })
 
 app.set('json spaces', 2);

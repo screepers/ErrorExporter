@@ -7,4 +7,4 @@ services:
     ports:
       - 10002:10002
     volumes:
-      - ./logs:/logs
+      - ./logs:/usr/ErrorExporter/logs
