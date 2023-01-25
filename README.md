@@ -18,6 +18,8 @@ An email error exporter replacement
 
 - Copy screepsCode/ErrorExporter(.js or .ts) to your bot folder and use it the following way: import or require the file, default and static class is exported which you should use to export errors with by executing `ErrorExporter.addErrorToSegment(errorMessage)`.
 
+You can include an optional version number after the errorMessage param.
+
 ### Server
 
 - Copy users.json.example to users.json and fill in your information. Name, shard, segment and authentication form are mandatory. Authentication form can be just token for mmo or email and password for private servers.
@@ -26,7 +28,7 @@ An email error exporter replacement
 
 ## Usage
 
-After installation is completed it will start to ever hour get your errors and save them by count.
+After installation is completed it will start to ever hour get your errors and save them by count. To change this edit .env `CRON_TAB_SYNTAX` variable to your liking using [syntax generator](https://crontab-generator.org/).
 
 About 200 errors can be saved in an segment per shard. Default is if you are above 90% of the segment it stops exporting and alerts your email via Game.notify in Screeps.
 

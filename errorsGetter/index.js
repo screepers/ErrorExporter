@@ -41,10 +41,12 @@ if (!fs.existsSync("./logs")) fs.mkdirSync("./logs")
 function writeErrorsByCount(userErrors) {
   const errorByCount = []
   for (let user in userErrors) {
-    for (let error of userErrors[user]) {
+    const version = userErrors[user].version
+    for (let error of userErrors[user].errors) {
       const lastSeen = {
         date: new Date().toUTCString(),
-        user
+        user,
+        version
       }
 
       error = error.replaceAll("&#39;", "")
@@ -77,6 +79,15 @@ function writeErrorsByCount(userErrors) {
   return errorByCount
 }
 
+function generateText(errorByCount) {
+  return errorByCount.map(e => {
+    const lastSeen = `Last seen at ${e.lastSeen.date}, by ${e.lastSeen.user}${e.lastSeen.version ? `, with version ${e.lastSeen.version}` : ""}\r\n`;
+    const count = `Count: ${e.count}x\r\n`;
+    const stack = `\`\`\`json\r\n${e.stack}\`\`\``;
+    return lastSeen + count + stack + "\r\n\r\n\r\n"
+  }).join('')
+}
+
 async function handle() {
   console.log()
   console.log('/------------------------')
@@ -84,7 +95,6 @@ async function handle() {
 
   const errors = {}
   for (const user of users) {
-    if (!errors[user.name]) errors[user.name] = []
     const api = new ScreepsAPI(user)
     const getResult = await api.segment.get(user.segment, user.shard)
     if (!getResult.ok || getResult.ok !== 1 || getResult.data === null) {
@@ -104,20 +114,15 @@ async function handle() {
       continue;
     };
 
-    errors[user.name].push(...data.errors)
+    if (!errors[user.name]) errors[user.name] = {errors: [], version: data.version}
+    errors[user.name].errors.push(...data.errors)
     logger.info(`Added ${data.errors.length} errors from ${user.name} to error array`)
   }
 
   const errorByCount = writeErrorsByCount(errors)
   if (usingDiscordWebhook) {
     const webhookClient = new WebhookClient({ url: process.env.DISCORD_WEBHOOK_URL });
-    function generateText(e) {
-      const lastSeen = `Last seen at ${e.lastSeen.date}, by ${e.lastSeen.user}\r\n`;
-      const count = `Count: ${e.count}x\r\n`;
-      const stack = `\`\`\`json\r\n${e.stack}\`\`\``;
-      return lastSeen + count + stack + "\r\n\r\n\r\n"
-    }
-    const text = errorByCount.map(e => generateText(e)).join('')
+    const text = errorByCount.length > 0 ? generateText(errorByCount) : "No new errors"
     if (text) webhookClient.send({
       content: text,
       username: 'The-International - Error Exporter',
@@ -127,13 +132,18 @@ async function handle() {
   logger.info(`Total amount of unique errors: ${errorByCount.length}`)
 }
 
-cron.schedule('0 * * * *', () => handle());
+cron.schedule(process.env.CRON_JOB_SYNTAX || "0 * * * *", () => handle());
 
 app.get('/', (req, res) => {
   const errors = fs.readFileSync('./logs/errors.json')
   res.send({ result: true, errors: JSON.parse(errors) })
 })
+app.get('/errors', (req, res) => {
+  const errors = fs.readFileSync('./logs/errors.json')
+  res.json(JSON.parse(errors))
+})
 
+app.set('json spaces', 2);
 app.listen(port, () => {
   console.log(`App listening at http://localhost:${port}`)
   handle()
