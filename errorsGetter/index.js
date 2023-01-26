@@ -20,6 +20,7 @@ let webhookClient = null
 if (usingDiscordWebhook) {
   webhookClient = new WebhookClient({ url: process.env.DISCORD_WEBHOOK_URL });
 }
+let lastMessage = undefined
 
 import winston from "winston"
 const logger = winston.createLogger({
@@ -84,6 +85,11 @@ function writeErrorsByCount(userErrors) {
 }
 
 function generateText(errorByCount) {
+  if (errorByCount.length === 0) {
+    const isNoErrorMessage = !lastMessage || !lastMessage.content.startsWith("No errors found")
+    if (isNoErrorMessage) return "No errors found"
+    else return "No errors found since " + new Date(lastMessage.timestamp).toUTCString()
+  } 
   return errorByCount.map(e => {
     const lastSeen = `Last seen at ${e.lastSeen.date}, by ${e.lastSeen.user}${e.lastSeen.version ? `, with version ${e.lastSeen.version}` : ""}\r\n`;
     const count = `Count: ${e.count}x\r\n`;
@@ -126,12 +132,16 @@ async function handle() {
   const errorByCount = writeErrorsByCount(errors)
   if (usingDiscordWebhook) {
     const webhookClient = new WebhookClient({ url: process.env.DISCORD_WEBHOOK_URL });
-    const text = errorByCount.length > 0 ? generateText(errorByCount) : "No new errors"
-    if (text) webhookClient.send({
+    const noNewErrors = lastMessage && lastMessage.content.startsWith("No errors found")
+    const text = generateText(errorByCount)
+    if (!noNewErrors) lastMessage = await webhookClient.send({
       content: text,
       username: 'The-International - Error Exporter',
       avatarURL: 'https://avatars.githubusercontent.com/u/107775846?s=200&v=4',
-    });
+    })
+    else {
+      lastMessage = await webhookClient.editMessage(lastMessage, {content: text})
+    }
   }
   logger.info(`Total amount of unique errors: ${errorByCount.length}`)
 }
