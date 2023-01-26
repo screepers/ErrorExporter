@@ -84,14 +84,15 @@ function writeErrorsByCount(userErrors) {
   return errorByCount
 }
 
+const getTimestamp = (date) => Math.floor(date.getTime() / 1000);
 function generateText(errorByCount) {
   if (errorByCount.length === 0) {
     const isNoErrorMessage = !lastMessage || !lastMessage.content.startsWith("No errors found")
     if (isNoErrorMessage) return "No errors found"
-    else return `No errors found since <t:${Math.floor(new Date(lastMessage.timestamp).getTime() / 1000)}:R>`
+    else return `No errors found since <t:${getTimestamp(new Date(lastMessage.timestamp))}:R>`
   } 
   return errorByCount.map(e => {
-    const lastSeen = `Last seen at <t:${Math.floor(new Date(e.lastSeen.date).getTime() / 1000)}:R>, by ${e.lastSeen.user}${e.lastSeen.version ? `, with version ${e.lastSeen.version}` : ""}\r\n`;
+    const lastSeen = `Last seen <t:${getTimestamp(new Date(e.lastSeen.date))}:R>, by ${e.lastSeen.user}${e.lastSeen.version ? `, with version ${e.lastSeen.version}` : ""}\r\n`;
     const count = `Count: ${e.count}x\r\n`;
     const stack = `\`\`\`json\r\n${e.stack}\`\`\``;
     return lastSeen + count + stack + "\r\n\r\n\r\n"
