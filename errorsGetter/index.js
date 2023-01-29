@@ -134,7 +134,8 @@ async function handle() {
   if (usingDiscordWebhook) {
     const webhookClient = new WebhookClient({ url: process.env.DISCORD_WEBHOOK_URL });
     const noNewErrors = lastMessage && lastMessage.content.startsWith("No errors found")
-    const text = generateText(errorByCount)
+    let text = generateText(errorByCount)
+    if (text.length > 2000) text.substring(0, 1996)+"..."
     if (!noNewErrors) lastMessage = await webhookClient.send({
       content: text,
       username: 'The-International - Error Exporter',
@@ -147,7 +148,7 @@ async function handle() {
   logger.info(`Total amount of unique errors: ${errorByCount.length}`)
 }
 
-cron.schedule(process.env.CRON_JOB_SYNTAX || "0 * * * *", () => handle());
+cron.schedule(process.env.CRON_JOB_SYNTAX || "*/30 * * * *", () => handle());
 
 app.get('/', (req, res) => {
   const errors = fs.readFileSync('./logs/errors.json')
