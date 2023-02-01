@@ -89,7 +89,7 @@ function generateText(errorByCount) {
   if (errorByCount.length === 0) {
     const isNoErrorMessage = !lastMessage || !lastMessage.content.startsWith("No errors found")
     if (isNoErrorMessage) return "No errors found"
-    else return `No errors found since <t:${getTimestamp(new Date(lastMessage.timestamp))}:R>`
+    else return `No errors found since <t:${getTimestamp(new Date(lastMessage.timestamp))}:R>, last checked <t:${getTimestamp(new Date())}:R>`
   } 
   return errorByCount.map(e => {
     const lastSeen = `Last seen <t:${getTimestamp(new Date(e.lastSeen.date))}:R>, by ${e.lastSeen.user}${e.lastSeen.version ? `, with version ${e.lastSeen.version}` : ""}\r\n`;
