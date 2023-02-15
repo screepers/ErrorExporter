@@ -1,6 +1,6 @@
 [
   {
-    "name": "PandaMaster",
+    "username": "PandaMaster",
     "segment": 10,
     "token": "YOUR_TOKEN_IF_MMO",
     "shard": "shard0"
