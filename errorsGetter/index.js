@@ -122,9 +122,9 @@ async function handle() {
 
   const errors = {}
   for (const user of users) {
-    const api = new ScreepsAPI()
+    let api = new ScreepsAPI()
     if (user.token) {
-      await api.auth(user.token)
+      api = new ScreepsAPI(user)
     } else {
       await api.auth(user.username, user.password, {
         protocol: 'http',
@@ -132,7 +132,7 @@ async function handle() {
         port: 21025,
       })
     }
-    
+
     const getResult = await api.segment.get(user.segment, user.shard)
     if (!getResult.ok || getResult.ok !== 1 || getResult.data === null || getResult.data === "") {
       logger.error(`Error getting segment for ${user.username} - ${JSON.stringify(getResult)}`)
