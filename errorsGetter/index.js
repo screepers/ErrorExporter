@@ -126,10 +126,14 @@ async function handle() {
     if (user.token) {
       api = new ScreepsAPI(user)
     } else {
+      const url = user.url || "localhost";
+      const protocol = url.startsWith("https") ? "https" : "http";
+      const hostname = url.replace("https://", "").replace("http://", "").split(":")[0];
+      const port = Number(url.includes(":") ? url.includes("://") ? url.split(":")[2] : url.split(":")[1] : 21025);
       await api.auth(user.username, user.password, {
-        protocol: 'http',
-        hostname: 'localhost',
-        port: 21025,
+        protocol,
+        hostname,
+        port,
       })
     }
 

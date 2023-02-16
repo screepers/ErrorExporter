@@ -21,7 +21,7 @@ An email error exporter replacement
 
 ### Server
 
-- Copy users.json.example to users.json and fill in your information. Name, shard, segment and authentication form are mandatory (token, or username+password (don't include token)). Authentication form can be just token for mmo or email and password for private servers.
+- Copy users.json.example to users.json and fill in your information. Name, shard, segment and authentication form are mandatory (see `users.json.example`)).
 - Copy .env.example to .env and fill in your [discord webhook url](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks) if you do want this enabled.
 - Run `npm run start` or `npm run start:docker` to start in docker.
 

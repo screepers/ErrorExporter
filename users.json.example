@@ -1,8 +1,14 @@
 [
   {
-    "username": "PandaMaster",
+    "username": "YOUR_USERNAME",
     "segment": 10,
     "token": "YOUR_TOKEN_IF_MMO",
     "shard": "shard0"
+  },
+  {
+    "username": "YOUR_USERNAME",
+    "password": "YOUR_PASSWORD",
+    "segment": 10,
+    "url": "yourHost.com:21030 (default http://localhost:21025 if not specified or missing an part)",
   }
 ]
