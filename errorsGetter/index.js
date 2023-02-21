@@ -1,5 +1,5 @@
 import * as dotenv from 'dotenv'
-
+import LokiTransport from "winston-loki";
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import express from 'express'
@@ -34,11 +34,15 @@ const logger = winston.createLogger({
   ],
 })
 
-if (usingLoki) {
-  logger.add(new LokiTransport({
-    host: process.env.GRAFANA_LOKI_URL
-  }));
-}
+let lokiLogger = usingLoki ? winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(winston.format.json(), winston.format.timestamp(), winston.format.prettyPrint()),
+  transports: [
+    new LokiTransport({
+      host: process.env.GRAFANA_LOKI_URL
+    })
+  ],
+}) : null
 
 if (process.env.NODE_ENV !== 'production') {
   logger.add(
@@ -66,6 +70,10 @@ function writeErrorsByCount(userErrors) {
       else {
         errorByCount[index].count++
         errorByCount[index].lastSeen = lastSeen
+      }
+
+      if (usingLoki) {
+        lokiLogger.info({message: error, labels: {user, version}})
       }
     }
   }
