@@ -179,7 +179,7 @@ async function handle() {
     const webhookClient = new WebhookClient({ url: process.env.DISCORD_WEBHOOK_URL })
     const noNewErrors = lastMessage && lastMessage.content.startsWith('No errors found')
     const text = generateText(errorByCount)
-    if (text.length > 2000)`${text.substring(0, 1996)}...`
+    if (text.length > 1950)`${text.substring(0, 1950)}.....`
     if (!noNewErrors)
       lastMessage = await webhookClient.send({
         content: text,
