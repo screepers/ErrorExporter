@@ -39,7 +39,12 @@ let lokiLogger = usingLoki ? winston.createLogger({
   format: winston.format.combine(winston.format.json(), winston.format.timestamp(), winston.format.prettyPrint()),
   transports: [
     new LokiTransport({
-      host: process.env.GRAFANA_LOKI_URL
+      host: process.env.GRAFANA_LOKI_URL,
+      labels: { app: 'ErrorExporter' },
+      json: true,
+      format: winston.format.json(),
+      replaceTimestamp: true,
+      onConnectionError: (err) => console.error(err)
     })
   ],
 }) : null
@@ -73,7 +78,7 @@ function writeErrorsByCount(userErrors) {
       }
 
       if (usingLoki) {
-        lokiLogger.info({message: error, labels: {user, version}})
+        lokiLogger.info({ message: `stack=${error}`, labels: { user, version } })
       }
     }
   }
