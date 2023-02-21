@@ -9,8 +9,6 @@ import fs from 'fs'
 
 import { WebhookClient } from 'discord.js'
 
-import winston from 'winston'
-// see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
 dotenv.config()
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -19,12 +17,14 @@ const users = JSON.parse(fs.readFileSync('./users.json'))
 const app = express()
 const port = 10002
 const usingDiscordWebhook = process.env.DISCORD_WEBHOOK_URL !== undefined && process.env.DISCORD_WEBHOOK_URL !== ''
+const usingLoki = process.env.GRAFANA_LOKI_URL !== undefined && process.env.GRAFANA_LOKI_URL !== ''
 let webhookClient = null
 if (usingDiscordWebhook) {
   webhookClient = new WebhookClient({ url: process.env.DISCORD_WEBHOOK_URL })
 }
 let lastMessage
 
+import winston from 'winston'
 const logger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(winston.format.json(), winston.format.timestamp(), winston.format.prettyPrint()),
@@ -33,6 +33,12 @@ const logger = winston.createLogger({
     new winston.transports.File({ filename: 'logs/combined.log' }),
   ],
 })
+
+if (usingLoki) {
+  logger.add(new LokiTransport({
+    host: process.env.GRAFANA_LOKI_URL
+  }));
+}
 
 if (process.env.NODE_ENV !== 'production') {
   logger.add(
