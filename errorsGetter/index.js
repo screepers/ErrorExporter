@@ -35,7 +35,6 @@ const logger = winston.createLogger({
   ],
 })
 
-console.log(process.env.GRAFANA_LOKI_URL.replace(process.env.ENVIRONMENT ? "localhost" : "none", isWindows ? "host.docker.internal" : "172.17.0.1"))
 let lokiLogger = usingLoki ? winston.createLogger({
   level: 'info',
   format: winston.format.combine(winston.format.json(), winston.format.timestamp(), winston.format.prettyPrint()),
