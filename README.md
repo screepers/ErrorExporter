@@ -30,3 +30,5 @@ An email error exporter replacement
 - After installation, the tool will start to retrieve errors and save them by count every hour. You can change this by editing the `CRON_TAB_SYNTAX` variable in the .env file using the [syntax generator](https://crontab-generator.org/).
 - About 200 errors can be saved in a segment per shard. If you are above 90% of the segment, it stops exporting and alerts your email via Game.notify in Screeps.
 - By default, port 10003 is used for the API. You can change this at the top of the `errorsGetter/index` file. The URL is [http://localhost:10003](http://localhost:10003).
+
+Add your `GRAFANA_LOKI_URL` to the .env file to enable Grafana Loki logging.
