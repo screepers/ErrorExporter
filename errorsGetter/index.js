@@ -185,8 +185,8 @@ async function handle() {
   if (usingDiscordWebhook) {
     const webhookClient = new WebhookClient({ url: process.env.DISCORD_WEBHOOK_URL })
     const noNewErrors = lastMessage && lastMessage.content.startsWith('No errors found')
-    const text = generateText(errorByCount)
-    if (text.length > 1950)`${text.substring(0, 1950)}.....`
+    let text = generateText(errorByCount)
+    if (text.length > 1950) text = `${text.substring(0, 1950)}.....`
     if (!noNewErrors)
       lastMessage = await webhookClient.send({
         content: text,
