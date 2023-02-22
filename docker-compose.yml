@@ -4,6 +4,8 @@ services:
   nodejs:
     build: .
     restart: unless-stopped
+    environment: 
+      - ENVIRONMENT=docker
     ports:
       - 10002:10002
     volumes:
