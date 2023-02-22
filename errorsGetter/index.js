@@ -19,10 +19,7 @@ const app = express()
 const port = 10002
 const usingDiscordWebhook = process.env.DISCORD_WEBHOOK_URL !== undefined && process.env.DISCORD_WEBHOOK_URL !== ''
 const usingLoki = process.env.GRAFANA_LOKI_URL !== undefined && process.env.GRAFANA_LOKI_URL !== ''
-let webhookClient = null
-if (usingDiscordWebhook) {
-  webhookClient = new WebhookClient({ url: process.env.DISCORD_WEBHOOK_URL })
-}
+
 let lastMessage
 
 import winston from 'winston'
@@ -55,6 +52,7 @@ let lokiLogger = usingLoki ? winston.createLogger({
 
 if (!fs.existsSync('./logs')) fs.mkdirSync('./logs')
 function writeErrorsByCount(userErrors) {
+  let lokiErrors = 0;
   const errorByCount = []
   for (const user in userErrors) {
     const { version } = userErrors[user]
@@ -76,6 +74,7 @@ function writeErrorsByCount(userErrors) {
       if (usingLoki) {
         try {
           lokiLogger.info({ message: `stack=${error}`, labels: { user, version } })
+          lokiErrors += 1
         } catch (error) {
           logger.error(error)
         }
@@ -111,7 +110,10 @@ function writeErrorsByCount(userErrors) {
   } catch (error) {
     logger.error(`OldErrors: ${oldErrors}, Error: ${error}`)
   }
-  return errorByCount
+  finally {
+    logger.info(`Total Loki errors saved: ${lokiErrors}, Total errors saved: ${errorByCount.length}`)
+    return errorByCount
+  }
 }
 
 const getTimestamp = date => Math.floor(date.getTime() / 1000)
