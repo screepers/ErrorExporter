@@ -1,0 +1,58 @@
+version: "3"
+
+volumes:
+  loki_data:
+  grafana_data:
+
+networks:
+  loki:
+
+services:
+  loki:
+    image: grafana/loki:2.7.0
+    ports:
+      - "840:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - loki
+    volumes:
+      - loki_data:/loki
+
+  promtail:
+    image: grafana/promtail:2.7.0
+    volumes:
+      - /var/log:/var/log
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - loki
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "84:3000"
+    networks:
+      - loki
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+    volumes:
+      - grafana_data:/var/lib/grafana
+    entrypoint:
+      - sh
+      - -euc
+      - |
+        mkdir -p /etc/grafana/provisioning/datasources
+        cat <<EOF > /etc/grafana/provisioning/datasources/ds.yaml
+        apiVersion: 1
+        datasources:
+        - name: Loki
+          type: loki
+          access: proxy 
+          orgId: 1
+          url: http://loki:3100
+          basicAuth: false
+          isDefault: true
+          version: 1
+          editable: false
+        EOF
+        /run.sh

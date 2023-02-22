@@ -1,5 +1,5 @@
 import * as dotenv from 'dotenv'
-
+import LokiTransport from "winston-loki";
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import express from 'express'
@@ -9,38 +9,49 @@ import fs from 'fs'
 
 import { WebhookClient } from 'discord.js'
 
-import winston from 'winston'
-// see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
 dotenv.config()
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const users = JSON.parse(fs.readFileSync('./users.json'))
+const isWindows = process.platform === 'win32'
 
 const app = express()
 const port = 10002
 const usingDiscordWebhook = process.env.DISCORD_WEBHOOK_URL !== undefined && process.env.DISCORD_WEBHOOK_URL !== ''
+const usingLoki = process.env.GRAFANA_LOKI_URL !== undefined && process.env.GRAFANA_LOKI_URL !== ''
 let webhookClient = null
 if (usingDiscordWebhook) {
   webhookClient = new WebhookClient({ url: process.env.DISCORD_WEBHOOK_URL })
 }
 let lastMessage
 
+import winston from 'winston'
 const logger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(winston.format.json(), winston.format.timestamp(), winston.format.prettyPrint()),
   transports: [
     new winston.transports.File({ filename: 'logs/errors.log', level: 'error' }),
     new winston.transports.File({ filename: 'logs/combined.log' }),
-  ],
-})
-
-if (process.env.NODE_ENV !== 'production') {
-  logger.add(
     new winston.transports.Console({
       format: winston.format.simple(),
     }),
-  )
-}
+  ],
+})
+
+let lokiLogger = usingLoki ? winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(winston.format.json(), winston.format.timestamp(), winston.format.prettyPrint()),
+  transports: [
+    new LokiTransport({
+      host: process.env.GRAFANA_LOKI_URL.replace(process.env.ENVIRONMENT ? "localhost" : "none", isWindows ? "host.docker.internal" : "172.17.0.1"),
+      labels: { app: 'ErrorExporter' },
+      json: true,
+      format: winston.format.json(),
+      replaceTimestamp: true,
+      onConnectionError: (err) => logger.error(err)
+    })
+  ],
+}) : null
 
 if (!fs.existsSync('./logs')) fs.mkdirSync('./logs')
 function writeErrorsByCount(userErrors) {
@@ -60,6 +71,14 @@ function writeErrorsByCount(userErrors) {
       else {
         errorByCount[index].count++
         errorByCount[index].lastSeen = lastSeen
+      }
+
+      if (usingLoki) {
+        try {
+          lokiLogger.info({ message: `stack=${error}`, labels: { user, version } })
+        } catch (error) {
+          logger.error(error)
+        }
       }
     }
   }
@@ -165,7 +184,7 @@ async function handle() {
     const webhookClient = new WebhookClient({ url: process.env.DISCORD_WEBHOOK_URL })
     const noNewErrors = lastMessage && lastMessage.content.startsWith('No errors found')
     const text = generateText(errorByCount)
-    if (text.length > 2000)`${text.substring(0, 1996)}...`
+    if (text.length > 1950)`${text.substring(0, 1950)}.....`
     if (!noNewErrors)
       lastMessage = await webhookClient.send({
         content: text,
