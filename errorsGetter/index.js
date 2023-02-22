@@ -43,15 +43,21 @@ let lokiLogger = usingLoki ? winston.createLogger({
       host: process.env.GRAFANA_LOKI_URL.replace(process.env.ENVIRONMENT ? "localhost" : "none", isWindows ? "host.docker.internal" : "172.17.0.1"),
       labels: { app: 'ErrorExporter' },
       json: true,
+      batching: false,
       format: winston.format.json(),
       replaceTimestamp: true,
+      interval: 1,
       onConnectionError: (err) => logger.error(err)
     })
   ],
 }) : null
 
+const sleep = (milliseconds) => {
+  return new Promise(resolve => setTimeout(resolve, milliseconds))
+}
+
 if (!fs.existsSync('./logs')) fs.mkdirSync('./logs')
-function writeErrorsByCount(userErrors) {
+async function writeErrorsByCount(userErrors) {
   let lokiErrors = 0;
   const errorByCount = []
   for (const user in userErrors) {
@@ -74,6 +80,7 @@ function writeErrorsByCount(userErrors) {
       if (usingLoki) {
         try {
           lokiLogger.info({ message: `stack=${error}`, labels: { user, version } })
+          await sleep(1000)
           lokiErrors += 1
         } catch (error) {
           logger.error(error)
@@ -181,7 +188,7 @@ async function handle() {
     logger.info(`Added ${data.errors.length} errors from ${user.username} to error array`)
   }
 
-  const errorByCount = writeErrorsByCount(errors)
+  const errorByCount = await writeErrorsByCount(errors)
   if (usingDiscordWebhook) {
     const webhookClient = new WebhookClient({ url: process.env.DISCORD_WEBHOOK_URL })
     const noNewErrors = lastMessage && lastMessage.content.startsWith('No errors found')
