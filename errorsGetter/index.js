@@ -41,7 +41,12 @@ let lokiLogger = usingLoki ? winston.createLogger({
   format: winston.format.combine(winston.format.json(), winston.format.timestamp(), winston.format.prettyPrint()),
   transports: [
     new LokiTransport({
-      host: process.env.GRAFANA_LOKI_URL.replace("localhost", isWindows ? "host.docker.internal" : "172.17.0.1")
+      host: process.env.GRAFANA_LOKI_URL.replace("localhost", isWindows ? "host.docker.internal" : "172.17.0.1"),
+      labels: { app: 'ErrorExporter' },
+      json: true,
+      format: winston.format.json(),
+      replaceTimestamp: true,
+      onConnectionError: (err) => logger.error(err)
     })
   ],
 }) : null
@@ -76,7 +81,7 @@ function writeErrorsByCount(userErrors) {
 
       if (usingLoki) {
         try {
-          lokiLogger.info({message: error, labels: {user, version}})
+          lokiLogger.info({ message: `stack=${error}`, labels: { user, version } })
         } catch (error) {
           logger.error(error)
         }
