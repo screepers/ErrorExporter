@@ -13,6 +13,7 @@ dotenv.config()
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const users = JSON.parse(fs.readFileSync('./users.json'))
+const isWindows = process.platform === 'win32'
 
 const app = express()
 const port = 10002
@@ -34,12 +35,13 @@ const logger = winston.createLogger({
   ],
 })
 
+console.log(process.env.GRAFANA_LOKI_URL.replace("localhost", isWindows ? "host.docker.internal" : "172.17.0.1"))
 let lokiLogger = usingLoki ? winston.createLogger({
   level: 'info',
   format: winston.format.combine(winston.format.json(), winston.format.timestamp(), winston.format.prettyPrint()),
   transports: [
     new LokiTransport({
-      host: process.env.GRAFANA_LOKI_URL
+      host: process.env.GRAFANA_LOKI_URL.replace("localhost", isWindows ? "host.docker.internal" : "172.17.0.1")
     })
   ],
 }) : null
@@ -73,7 +75,11 @@ function writeErrorsByCount(userErrors) {
       }
 
       if (usingLoki) {
-        lokiLogger.info({message: error, labels: {user, version}})
+        try {
+          lokiLogger.info({message: error, labels: {user, version}})
+        } catch (error) {
+          logger.error(error)
+        }
       }
     }
   }
