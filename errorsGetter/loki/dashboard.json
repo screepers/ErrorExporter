@@ -185,7 +185,7 @@
             "uid": "P8E80F9AEF21F6940"
           },
           "editorMode": "builder",
-          "expr": "sum by(message) (count_over_time({version=~\"$Version\", user=~\"$User\"} | json [$__interval]))",
+          "expr": "sum by(message) (count_over_time({version=~\"$Version\", user=~\"$User\"} | json [$__range]))",
           "queryType": "range",
           "refId": "A"
         }
@@ -194,6 +194,7 @@
       "type": "timeseries"
     }
   ],
+  "refresh": "10s",
   "schemaVersion": 37,
   "style": "dark",
   "tags": [],
@@ -266,13 +267,13 @@
     ]
   },
   "time": {
-    "from": "now-6h",
+    "from": "now-1h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "Errors",
   "uid": "D2uZJeJVz",
-  "version": 4,
+  "version": 1,
   "weekStart": ""
 }
