@@ -6,7 +6,7 @@ import express from 'express'
 import cron from 'node-cron'
 import { ScreepsAPI } from 'screeps-api'
 import fs from 'fs'
-
+import graphite from 'graphite'
 import { WebhookClient } from 'discord.js'
 
 dotenv.config()
@@ -19,6 +19,7 @@ const app = express()
 const port = 10002
 const usingDiscordWebhook = process.env.DISCORD_WEBHOOK_URL !== undefined && process.env.DISCORD_WEBHOOK_URL !== ''
 const usingLoki = process.env.GRAFANA_LOKI_URL !== undefined && process.env.GRAFANA_LOKI_URL !== ''
+const usingGraphite = process.env.GRAFANA_GRAPHITE_URL !== undefined && process.env.GRAFANA_GRAPHITE_URL !== ''
 
 let lastMessage
 
@@ -87,6 +88,15 @@ async function writeErrorsByCount(userErrors) {
         }
       }
     }
+  }
+
+  if (usingGraphite) {
+    const client = graphite.createClient(`plaintext://${process.env.GRAFANA_GRAPHITE_URL.replace(process.env.ENVIRONMENT ? "localhost" : "none", isWindows ? "host.docker.internal" : "172.17.0.1")}:2003/`)
+    errorByCount.forEach(error => {
+      client.write({errors: {stack: error.stack}}, error.count, (err) => {
+        if (err) logger.error(err)
+      })
+    })
   }
 
   const oldErrors = fs.existsSync('./logs/errors.json') ? JSON.parse(fs.readFileSync('./logs/errors.json')) : []
