@@ -52,6 +52,7 @@ let lokiLogger = usingLoki ? winston.createLogger({
     })
   ],
 }) : null
+const client = usingGraphite ? graphite.createClient(`plaintext://${process.env.GRAFANA_GRAPHITE_URL.replace(process.env.ENVIRONMENT ? "localhost" : "none", isWindows ? "host.docker.internal" : "172.17.0.1").replace("https://", "").replace("http://", "")}/`) : null
 
 const sleep = (milliseconds) => {
   return new Promise(resolve => setTimeout(resolve, milliseconds))
@@ -61,6 +62,7 @@ if (!fs.existsSync('./logs')) fs.mkdirSync('./logs')
 async function writeErrorsByCount(userErrors) {
   let lokiErrors = 0;
   const errorByCount = []
+  const errorsByUser = {}
   for (const user in userErrors) {
     const { version } = userErrors[user]
     for (let error of userErrors[user].errors) {
@@ -78,6 +80,12 @@ async function writeErrorsByCount(userErrors) {
         errorByCount[index].lastSeen = lastSeen
       }
 
+      const testName = error.replace(/(\r\n|\n|\r)/gm, "").replace(/\s/g, '_').replace(/\\|\//g, ':').replace(/\(|\)|\./g, '').split("__")[0];
+
+      if (errorsByUser[user] === undefined) errorsByUser[user] = {}
+      if (errorsByUser[user][testName] === undefined) errorsByUser[user][testName] = { count: 1 }
+      else errorsByUser[user][testName].count += 1
+
       if (usingLoki) {
         try {
           lokiLogger.info({ message: `stack=${error}`, labels: { user, version } })
@@ -91,11 +99,17 @@ async function writeErrorsByCount(userErrors) {
   }
 
   if (usingGraphite) {
-    const client = graphite.createClient(`plaintext://${process.env.GRAFANA_GRAPHITE_URL.replace(process.env.ENVIRONMENT ? "localhost" : "none", isWindows ? "host.docker.internal" : "172.17.0.1")}:2003/`)
-    errorByCount.forEach(error => {
-      client.write({errors: {stack: error.stack}}, error.count, (err) => {
-        if (err) logger.error(err)
-      })
+    //    for (const user in errorsByUser) {
+    //      const userErrors = errorsByUser[user]
+    //      for (const error in userErrors) {
+    //        const errorCount = userErrors[error].count
+    //        client.write({ errors: { [user]: { [error]: errorCount} } }, (err) => {
+    //          if (err) logger.error(err)
+    //        })
+    //      }
+    //    }
+    client.write({ errors: errorsByUser }, (err) => {
+      if (err) logger.error(err)
     })
   }
 
@@ -128,7 +142,7 @@ async function writeErrorsByCount(userErrors) {
     logger.error(`OldErrors: ${oldErrors}, Error: ${error}`)
   }
   finally {
-    logger.info(`Total Loki errors saved: ${lokiErrors}, Total errors saved: ${errorByCount.length}`)
+    logger.info(`Total errors saved: ${errorByCount.length}`)
     return errorByCount
   }
 }
