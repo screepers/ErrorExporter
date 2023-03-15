@@ -80,7 +80,7 @@ async function writeErrorsByCount(userErrors) {
         errorByCount[index].lastSeen = lastSeen
       }
 
-      const testName = error.replace(/(\r\n|\n|\r)/gm, "").replace(/\s/g, '_').replace(/\\|\//g, ':').replace(/\(|\)|\./g, '').split("__")[0];
+      const testName = error.replace(/(\r\n|\n|\r)/gm, "").replace(/\s/g, '_').replace(/\\|\//g, ':').replace(/\(|\)|\./g, '').replace(/Error:/g,"").split("__")[0];
 
       if (errorsByUser[user] === undefined) errorsByUser[user] = {}
       if (errorsByUser[user][testName] === undefined) errorsByUser[user][testName] = { count: 1 }
@@ -108,6 +108,7 @@ async function writeErrorsByCount(userErrors) {
     //        })
     //      }
     //    }
+    logger.info("Writing to graphite")
     client.write({ errors: errorsByUser }, (err) => {
       if (err) logger.error(err)
     })
