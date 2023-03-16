@@ -80,7 +80,7 @@
             "uid": "P1D261A8554D2DA69"
           },
           "refId": "A",
-          "target": "averageAbove(aliasByNode(sortByTotal(errors.$Users.$Errors.count), 1, 2), 0)"
+          "target": "maximumAbove(aliasByNode(sortByTotal(errors.$Users.$Errors.count), 1, 2), 0)"
         }
       ],
       "title": "Errors by user",
@@ -148,7 +148,7 @@
             "uid": "P1D261A8554D2DA69"
           },
           "refId": "A",
-          "target": "averageAbove(groupByNode(errors.*.*.count, 2, 'sumSeries'), 0)"
+          "target": "maximumAbove(groupByNode(errors.*.*.count, 2, 'sumSeries'), 0)"
         }
       ],
       "title": "Errors globally",
@@ -219,7 +219,7 @@
             "uid": "P1D261A8554D2DA69"
           },
           "refId": "A",
-          "target": "averageAbove(groupByNode(errors.*.*.count, 1, 'countSeries'), 0)"
+          "target": "maximumAbove(groupByNode(errors.*.*.count, 1, 'countSeries'), 0)"
         }
       ],
       "title": "Unique erors by user",
@@ -296,13 +296,13 @@
     ]
   },
   "time": {
-    "from": "now-7d",
+    "from": "now-2d",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "Errors",
   "uid": "rCDsRpbVz",
-  "version": 7,
+  "version": 8,
   "weekStart": ""
 }
