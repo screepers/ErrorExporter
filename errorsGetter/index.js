@@ -1,50 +1,68 @@
 import * as dotenv from 'dotenv'
-
+import LokiTransport from "winston-loki";
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import express from 'express'
 import cron from 'node-cron'
 import { ScreepsAPI } from 'screeps-api'
 import fs from 'fs'
-
+import graphite from 'graphite'
 import { WebhookClient } from 'discord.js'
 
-import winston from 'winston'
-// see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
 dotenv.config()
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const users = JSON.parse(fs.readFileSync('./users.json'))
+const isWindows = process.platform === 'win32'
 
 const app = express()
 const port = 10002
 const usingDiscordWebhook = process.env.DISCORD_WEBHOOK_URL !== undefined && process.env.DISCORD_WEBHOOK_URL !== ''
-let webhookClient = null
-if (usingDiscordWebhook) {
-  webhookClient = new WebhookClient({ url: process.env.DISCORD_WEBHOOK_URL })
-}
+const usingLoki = process.env.GRAFANA_LOKI_URL !== undefined && process.env.GRAFANA_LOKI_URL !== ''
+const usingGraphite = process.env.GRAFANA_GRAPHITE_URL !== undefined && process.env.GRAFANA_GRAPHITE_URL !== ''
+
 let lastMessage
 
+import winston from 'winston'
 const logger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(winston.format.json(), winston.format.timestamp(), winston.format.prettyPrint()),
   transports: [
     new winston.transports.File({ filename: 'logs/errors.log', level: 'error' }),
     new winston.transports.File({ filename: 'logs/combined.log' }),
-  ],
-})
-
-if (process.env.NODE_ENV !== 'production') {
-  logger.add(
     new winston.transports.Console({
       format: winston.format.simple(),
     }),
-  )
+  ],
+})
+
+let lokiLogger = usingLoki ? winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(winston.format.json(), winston.format.timestamp(), winston.format.prettyPrint()),
+  transports: [
+    new LokiTransport({
+      host: process.env.GRAFANA_LOKI_URL.replace(process.env.ENVIRONMENT ? "localhost" : "none", isWindows ? "host.docker.internal" : "172.17.0.1"),
+      labels: { app: 'ErrorExporter' },
+      json: true,
+      batching: false,
+      format: winston.format.json(),
+      replaceTimestamp: true,
+      interval: 1,
+      onConnectionError: (err) => logger.error(err)
+    })
+  ],
+}) : null
+const client = usingGraphite ? graphite.createClient(`plaintext://${process.env.GRAFANA_GRAPHITE_URL.replace(process.env.ENVIRONMENT ? "localhost" : "none", isWindows ? "host.docker.internal" : "172.17.0.1").replace("https://", "").replace("http://", "")}/`) : null
+
+const sleep = (milliseconds) => {
+  return new Promise(resolve => setTimeout(resolve, milliseconds))
 }
 
 if (!fs.existsSync('./logs')) fs.mkdirSync('./logs')
-function writeErrorsByCount(userErrors) {
+async function writeErrorsByCount(userErrors) {
+  let lokiErrors = 0;
   const errorByCount = []
+  const errorsByUser = {}
   for (const user in userErrors) {
     const { version } = userErrors[user]
     for (let error of userErrors[user].errors) {
@@ -61,7 +79,39 @@ function writeErrorsByCount(userErrors) {
         errorByCount[index].count++
         errorByCount[index].lastSeen = lastSeen
       }
+
+      const testName = error.replace(/(\r\n|\n|\r)/gm, "").replace(/\s/g, '_').replace(/\\|\//g, ':').replace(/\(|\)|\./g, '').replace(/Error:/g,"").split("__")[0];
+
+      if (errorsByUser[user] === undefined) errorsByUser[user] = {}
+      if (errorsByUser[user][testName] === undefined) errorsByUser[user][testName] = { count: 1 }
+      else errorsByUser[user][testName].count += 1
+
+      if (usingLoki) {
+        try {
+          lokiLogger.info({ message: `stack=${error}`, labels: { user, version } })
+          await sleep(1000)
+          lokiErrors += 1
+        } catch (error) {
+          logger.error(error)
+        }
+      }
     }
+  }
+
+  if (usingGraphite) {
+    //    for (const user in errorsByUser) {
+    //      const userErrors = errorsByUser[user]
+    //      for (const error in userErrors) {
+    //        const errorCount = userErrors[error].count
+    //        client.write({ errors: { [user]: { [error]: errorCount} } }, (err) => {
+    //          if (err) logger.error(err)
+    //        })
+    //      }
+    //    }
+    logger.info("Writing to graphite")
+    client.write({ errors: errorsByUser }, (err) => {
+      if (err) logger.error(err)
+    })
   }
 
   const oldErrors = fs.existsSync('./logs/errors.json') ? JSON.parse(fs.readFileSync('./logs/errors.json')) : []
@@ -92,7 +142,10 @@ function writeErrorsByCount(userErrors) {
   } catch (error) {
     logger.error(`OldErrors: ${oldErrors}, Error: ${error}`)
   }
-  return errorByCount
+  finally {
+    logger.info(`Total errors saved: ${errorByCount.length}`)
+    return errorByCount
+  }
 }
 
 const getTimestamp = date => Math.floor(date.getTime() / 1000)
@@ -160,12 +213,12 @@ async function handle() {
     logger.info(`Added ${data.errors.length} errors from ${user.username} to error array`)
   }
 
-  const errorByCount = writeErrorsByCount(errors)
+  const errorByCount = await writeErrorsByCount(errors)
   if (usingDiscordWebhook) {
     const webhookClient = new WebhookClient({ url: process.env.DISCORD_WEBHOOK_URL })
     const noNewErrors = lastMessage && lastMessage.content.startsWith('No errors found')
-    const text = generateText(errorByCount)
-    if (text.length > 2000)`${text.substring(0, 1996)}...`
+    let text = generateText(errorByCount)
+    if (text.length > 1950) text = `${text.substring(0, 1950)}.....`
     if (!noNewErrors)
       lastMessage = await webhookClient.send({
         content: text,
