@@ -120,7 +120,7 @@ async function writeErrorsByCount(userErrors) {
     })
   }
 
-  const oldErrors = fs.existsSync('./logs/errors.json') ? JSON.parse(fs.readFileSync('./logs/errors.json')) : []
+  const oldErrors = fs.existsSync('./logs/screepsCodeErrors.json') ? JSON.parse(fs.readFileSync('./logs/screepsCodeErrors.json')) : []
   for (let i = 0; i < errorByCount.length; i++) {
     const error = errorByCount[i]
     const oldIndex = oldErrors.findIndex(e => e.stack === error.stack)
@@ -144,7 +144,7 @@ async function writeErrorsByCount(userErrors) {
   try {
     const jsonText = JSON.stringify(oldErrors)
     JSON.parse(jsonText)
-    fs.writeFileSync('./logs/errors.json', jsonText)
+    fs.writeFileSync('./logs/screepsCodeErrors.json', jsonText)
   } catch (error) {
     logger.error(`OldErrors: ${oldErrors}, Error: ${error}`)
   }
@@ -248,11 +248,11 @@ async function handle() {
 cron.schedule(process.env.CRON_JOB_SYNTAX || '*/30 * * * *', () => handle())
 
 app.get('/', (req, res) => {
-  const errors = fs.readFileSync('./logs/errors.json')
+  const errors = fs.readFileSync('./logs/screepsCodeErrors.json')
   res.send({ result: true, errors: JSON.parse(errors) })
 })
 app.get('/errors', (req, res) => {
-  const errors = fs.readFileSync('./logs/errors.json')
+  const errors = fs.readFileSync('./logs/screepsCodeErrors.json')
   res.json(JSON.parse(errors))
 })
 
