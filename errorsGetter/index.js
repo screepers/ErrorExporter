@@ -36,6 +36,12 @@ const logger = winston.createLogger({
   ],
 })
 
+if (process.env.NODE_ENV !== 'production') {
+  logger.add(new winston.transports.Console({
+    format: winston.format.simple(),
+  }));
+}
+
 let lokiLogger = usingLoki ? winston.createLogger({
   level: 'info',
   format: winston.format.combine(winston.format.json(), winston.format.timestamp(), winston.format.prettyPrint()),
@@ -190,11 +196,18 @@ async function handle() {
       })
     }
 
-    const getResult = await api.segment.get(user.segment, user.shard)
-    if (!getResult.ok || getResult.ok !== 1 || getResult.data === null || getResult.data === "") {
-      logger.error(`Error getting segment for ${user.username} - ${JSON.stringify(getResult)}`)
+    let getResult = null
+    try {
+      getResult = await api.segment.get(user.segment, user.shard)
+      if (!getResult.ok || getResult.ok !== 1 || getResult.data === null || getResult.data === "") {
+        logger.error(`Error getting segment for ${user.username} - ${JSON.stringify(getResult)}`)
+        continue
+      }
+    } catch (error) {
+      logger.error(user.username, user.token, user.password, error)
       continue
     }
+
 
     const data = JSON.parse(getResult.data)
     if (data.errors.length === 0) {
