@@ -204,7 +204,7 @@ async function handle() {
         continue
       }
     } catch (error) {
-      logger.error(user.username, user.token, user.password, error)
+      logger.error(`Error getting segment for ${user.username} with ${user.token} or password ${user.password}, error: ${error}`)
       continue
     }
 
