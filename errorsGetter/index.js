@@ -120,38 +120,40 @@ async function writeErrorsByCount(userErrors) {
     })
   }
 
-  const oldErrors = fs.existsSync('./logs/screepsCodeErrors.json') ? JSON.parse(fs.readFileSync('./logs/screepsCodeErrors.json')) : []
-  for (let i = 0; i < errorByCount.length; i++) {
-    const error = errorByCount[i]
-    const oldIndex = oldErrors.findIndex(e => e.stack === error.stack)
-    const index = errorByCount.findIndex(e => e.stack === error.stack)
+  // const oldErrors = fs.existsSync('./logs/screepsCodeErrors.json') ? JSON.parse(fs.readFileSync('./logs/screepsCodeErrors.json')) : []
+  // for (let i = 0; i < errorByCount.length; i++) {
+  //   const error = errorByCount[i]
+  //   const oldIndex = oldErrors.findIndex(e => e.stack === error.stack)
+  //   const index = errorByCount.findIndex(e => e.stack === error.stack)
 
-    if (oldIndex === -1)
-      oldErrors.push({
-        stack: error.stack,
-        count: errorByCount[index].count,
-        lastSeen: errorByCount[index].lastSeen,
-      })
-    else {
-      oldErrors[oldIndex].count += errorByCount[index].count
-      oldErrors[oldIndex].lastSeen = errorByCount[index].lastSeen
-    }
-  }
+  //   if (oldIndex === -1)
+  //     oldErrors.push({
+  //       stack: error.stack,
+  //       count: errorByCount[index].count,
+  //       lastSeen: errorByCount[index].lastSeen,
+  //     })
+  //   else {
+  //     oldErrors[oldIndex].count += errorByCount[index].count
+  //     oldErrors[oldIndex].lastSeen = errorByCount[index].lastSeen
+  //   }
+  // }
 
-  oldErrors.sort((a, b) => b.count - a.count)
+  // oldErrors.sort((a, b) => b.count - a.count)
   errorByCount.sort((a, b) => b.count - a.count)
 
-  try {
-    const jsonText = JSON.stringify(oldErrors)
-    JSON.parse(jsonText)
-    fs.writeFileSync('./logs/screepsCodeErrors.json', jsonText)
-  } catch (error) {
-    logger.error(`OldErrors: ${oldErrors}, Error: ${error}`)
-  }
-  finally {
-    logger.info(`Total errors saved: ${errorByCount.length}`)
-    return errorByCount
-  }
+  // try {
+  //   const jsonText = JSON.stringify(oldErrors)
+  //   JSON.parse(jsonText)
+  //   fs.writeFileSync('./logs/screepsCodeErrors.json', jsonText)
+  // } catch (error) {
+  //   logger.error(`OldErrors: ${oldErrors}, Error: ${error}`)
+  // }
+  // finally {
+  //   logger.info(`Total errors saved: ${errorByCount.length}`)
+  //   return errorByCount
+  // }
+  logger.info(`Total errors saved: ${errorByCount.length}`)
+  return errorByCount
 }
 
 const getTimestamp = date => Math.floor(date.getTime() / 1000)
@@ -247,14 +249,14 @@ async function handle() {
 
 cron.schedule(process.env.CRON_JOB_SYNTAX || '*/30 * * * *', () => handle())
 
-app.get('/', (req, res) => {
-  const errors = fs.readFileSync('./logs/screepsCodeErrors.json')
-  res.send({ result: true, errors: JSON.parse(errors) })
-})
-app.get('/errors', (req, res) => {
-  const errors = fs.readFileSync('./logs/screepsCodeErrors.json')
-  res.json(JSON.parse(errors))
-})
+// app.get('/', (req, res) => {
+//   const errors = fs.readFileSync('./logs/screepsCodeErrors.json')
+//   res.send({ result: true, errors: JSON.parse(errors) })
+// })
+// app.get('/errors', (req, res) => {
+//   const errors = fs.readFileSync('./logs/screepsCodeErrors.json')
+//   res.json(JSON.parse(errors))
+// })
 
 app.get('/logs/:name', function (req, res, next) {
   const options = {
