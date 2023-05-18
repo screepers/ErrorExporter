@@ -14,6 +14,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const users = JSON.parse(fs.readFileSync('./users.json'))
 const isWindows = process.platform === 'win32'
+const lastPull = 0;
 
 const app = express()
 const port = 10002
@@ -66,7 +67,6 @@ const sleep = (milliseconds) => {
 
 if (!fs.existsSync('./logs')) fs.mkdirSync('./logs')
 async function writeErrorsByCount(userErrors) {
-  let lokiErrors = 0;
   const errorByCount = []
   const errorsByUser = {}
   for (const user in userErrors) {
@@ -153,6 +153,7 @@ async function writeErrorsByCount(userErrors) {
   //   return errorByCount
   // }
   logger.info(`Total errors saved: ${errorByCount.length}`)
+  if (errorByCount > 0) lastPull = Date().now()
   return errorByCount
 }
 
@@ -249,14 +250,10 @@ async function handle() {
 
 cron.schedule(process.env.CRON_JOB_SYNTAX || '*/30 * * * *', () => handle())
 
-// app.get('/', (req, res) => {
-//   const errors = fs.readFileSync('./logs/screepsCodeErrors.json')
-//   res.send({ result: true, errors: JSON.parse(errors) })
-// })
-// app.get('/errors', (req, res) => {
-//   const errors = fs.readFileSync('./logs/screepsCodeErrors.json')
-//   res.json(JSON.parse(errors))
-// })
+app.get('/', (req, res) => {
+  const isOnline = Date().now() - lastPull < 1000 * 60 * 60 * 24
+  res.send({ result: isOnline })
+})
 
 app.get('/logs/:name', function (req, res, next) {
   const options = {
