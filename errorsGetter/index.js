@@ -153,7 +153,7 @@ async function writeErrorsByCount(userErrors) {
   //   return errorByCount
   // }
   logger.info(`Total errors saved: ${errorByCount.length}`)
-  if (errorByCount > 0) lastPull = Date.now()
+  lastPull = Date.now()
   return errorByCount
 }
 
