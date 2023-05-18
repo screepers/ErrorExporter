@@ -153,7 +153,6 @@ async function writeErrorsByCount(userErrors) {
   //   return errorByCount
   // }
   logger.info(`Total errors saved: ${errorByCount.length}`)
-  lastPull = Date.now()
   return errorByCount
 }
 
@@ -245,6 +244,7 @@ async function handle() {
       lastMessage = await webhookClient.editMessage(lastMessage, { content: text })
     }
   }
+  lastPull = Date.now()
   logger.info(`Total amount of unique errors: ${errorByCount.length}`)
 }
 
