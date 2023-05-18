@@ -14,7 +14,6 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const users = JSON.parse(fs.readFileSync('./users.json'))
 const isWindows = process.platform === 'win32'
-const lastPull = 0;
 
 const app = express()
 const port = 10002
@@ -23,6 +22,7 @@ const usingLoki = process.env.GRAFANA_LOKI_URL !== undefined && process.env.GRAF
 const usingGraphite = process.env.GRAFANA_GRAPHITE_URL !== undefined && process.env.GRAFANA_GRAPHITE_URL !== ''
 
 let lastMessage
+let lastPull = 0;
 
 import winston from 'winston'
 const logger = winston.createLogger({
