@@ -153,7 +153,7 @@ async function writeErrorsByCount(userErrors) {
   //   return errorByCount
   // }
   logger.info(`Total errors saved: ${errorByCount.length}`)
-  if (errorByCount > 0) lastPull = Date().now()
+  if (errorByCount > 0) lastPull = Date.now()
   return errorByCount
 }
 
@@ -251,7 +251,7 @@ async function handle() {
 cron.schedule(process.env.CRON_JOB_SYNTAX || '*/30 * * * *', () => handle())
 
 app.get('/', (req, res) => {
-  const isOnline = Date().now() - lastPull < 1000 * 60 * 60 * 24
+  const isOnline = Date.now() - lastPull < 1000 * 60 * 60 * 24
   res.send({ result: isOnline })
 })
 
