@@ -1,12 +1,14 @@
-version: '3'
+version: "3"
 
 services:
   nodejs:
     build: .
     restart: unless-stopped
-    environment: 
+    environment:
       - ENVIRONMENT=docker
     ports:
       - 10002:10002
     volumes:
       - ./logs:/usr/ErrorExporter/logs
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

@@ -1,5 +1,4 @@
 import * as dotenv from 'dotenv'
-import LokiTransport from "winston-loki";
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import express from 'express'
@@ -13,27 +12,30 @@ dotenv.config()
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const users = JSON.parse(fs.readFileSync('./users.json'))
-const isWindows = process.platform === 'win32'
 
 const app = express()
 const port = 10002
 const usingDiscordWebhook = process.env.DISCORD_WEBHOOK_URL !== undefined && process.env.DISCORD_WEBHOOK_URL !== ''
-const usingLoki = process.env.GRAFANA_LOKI_URL !== undefined && process.env.GRAFANA_LOKI_URL !== ''
-const usingGraphite = process.env.GRAFANA_GRAPHITE_URL !== undefined && process.env.GRAFANA_GRAPHITE_URL !== ''
 
 let lastMessage
 let lastPull = 0;
 
 import winston from 'winston'
+import 'winston-daily-rotate-file';
+
+const transport = new winston.transports.DailyRotateFile({
+  filename: 'logs/application-%DATE%.log',
+  datePattern: 'YYYY-MM-DD',
+  zippedArchive: true,
+  maxSize: '20m',
+  maxFiles: '14d'
+});
+
 const logger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(winston.format.json(), winston.format.timestamp(), winston.format.prettyPrint()),
   transports: [
-    new winston.transports.File({ filename: 'logs/errors.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
-    new winston.transports.Console({
-      format: winston.format.simple(),
-    }),
+    transport
   ],
 })
 
@@ -43,29 +45,8 @@ if (process.env.NODE_ENV !== 'production') {
   }));
 }
 
-let lokiLogger = usingLoki ? winston.createLogger({
-  level: 'info',
-  format: winston.format.combine(winston.format.json(), winston.format.timestamp(), winston.format.prettyPrint()),
-  transports: [
-    new LokiTransport({
-      host: process.env.GRAFANA_LOKI_URL.replace(process.env.ENVIRONMENT ? "localhost" : "none", isWindows ? "host.docker.internal" : "172.17.0.1"),
-      labels: { app: 'ErrorExporter' },
-      json: true,
-      batching: false,
-      format: winston.format.json(),
-      replaceTimestamp: true,
-      interval: 1,
-      onConnectionError: (err) => logger.error(err)
-    })
-  ],
-}) : null
-const client = usingGraphite ? graphite.createClient(`plaintext://${process.env.GRAFANA_GRAPHITE_URL.replace(process.env.ENVIRONMENT ? "localhost" : "none", isWindows ? "host.docker.internal" : "172.17.0.1").replace("https://", "").replace("http://", "")}/`) : null
+const client = graphite.createClient(`plaintext://${process.env.GRAFANA_GRAPHITE_URL}/`)
 
-const sleep = (milliseconds) => {
-  return new Promise(resolve => setTimeout(resolve, milliseconds))
-}
-
-if (!fs.existsSync('./logs')) fs.mkdirSync('./logs')
 async function writeErrorsByCount(userErrors) {
   const errorByCount = []
   const errorsByUser = {}
@@ -86,72 +67,21 @@ async function writeErrorsByCount(userErrors) {
         errorByCount[index].lastSeen = lastSeen
       }
 
-      const testName = error.replace(/(\r\n|\n|\r)/gm, "").replace(/\s/g, '_').replace(/\\|\//g, ':').replace(/\(|\)|\./g, '').replace(/Error:/g,"").split("__")[0];
+      const testName = error.replace(/(\r\n|\n|\r)/gm, "").replace(/\s/g, '_').replace(/\\|\//g, ':').replace(/\(|\)|\./g, '').replace(/Error:/g, "").split("__")[0];
 
       if (errorsByUser[user] === undefined) errorsByUser[user] = {}
       if (errorsByUser[user][testName] === undefined) errorsByUser[user][testName] = { count: 1 }
       else errorsByUser[user][testName].count += 1
-
-      if (usingLoki) {
-        try {
-          lokiLogger.info({ message: `stack=${error}`, labels: { user, version } })
-          await sleep(1000)
-          lokiErrors += 1
-        } catch (error) {
-          logger.error(error)
-        }
-      }
     }
   }
 
-  if (usingGraphite) {
-    //    for (const user in errorsByUser) {
-    //      const userErrors = errorsByUser[user]
-    //      for (const error in userErrors) {
-    //        const errorCount = userErrors[error].count
-    //        client.write({ errors: { [user]: { [error]: errorCount} } }, (err) => {
-    //          if (err) logger.error(err)
-    //        })
-    //      }
-    //    }
-    logger.info("Writing to graphite")
-    client.write({ errors: errorsByUser }, (err) => {
-      if (err) logger.error(err)
-    })
-  }
+  logger.info("Writing to graphite")
+  client.write({ errors: errorsByUser }, (err) => {
+    if (err) logger.error(err)
+  })
 
-  // const oldErrors = fs.existsSync('./logs/screepsCodeErrors.json') ? JSON.parse(fs.readFileSync('./logs/screepsCodeErrors.json')) : []
-  // for (let i = 0; i < errorByCount.length; i++) {
-  //   const error = errorByCount[i]
-  //   const oldIndex = oldErrors.findIndex(e => e.stack === error.stack)
-  //   const index = errorByCount.findIndex(e => e.stack === error.stack)
-
-  //   if (oldIndex === -1)
-  //     oldErrors.push({
-  //       stack: error.stack,
-  //       count: errorByCount[index].count,
-  //       lastSeen: errorByCount[index].lastSeen,
-  //     })
-  //   else {
-  //     oldErrors[oldIndex].count += errorByCount[index].count
-  //     oldErrors[oldIndex].lastSeen = errorByCount[index].lastSeen
-  //   }
-  // }
-
-  // oldErrors.sort((a, b) => b.count - a.count)
   errorByCount.sort((a, b) => b.count - a.count)
 
-  // try {
-  //   const jsonText = JSON.stringify(oldErrors)
-  //   JSON.parse(jsonText)
-  //   fs.writeFileSync('./logs/screepsCodeErrors.json', jsonText)
-  // } catch (error) {
-  //   logger.error(`OldErrors: ${oldErrors}, Error: ${error}`)
-  // }
-  // finally {
-  //   logger.info(`Total errors saved: ${errorByCount.length}`)
-  //   return errorByCount
-  // }
   logger.info(`Total errors saved: ${errorByCount.length}`)
   return errorByCount
 }
@@ -255,27 +185,6 @@ app.get('/', (req, res) => {
   res.send({ result: isOnline })
 })
 
-app.get('/logs/:name', function (req, res, next) {
-  const options = {
-    root: join(__dirname, '../logs'),
-    dotfiles: 'deny',
-    headers: {
-      'x-timestamp': Date.now(),
-      'x-sent': true,
-    },
-  }
-
-  const fileName = req.params.name
-  res.sendFile(fileName, options, function (err) {
-    if (err) {
-      next(err)
-    } else {
-      console.log('Sent:', fileName)
-    }
-  })
-})
-
-app.set('json spaces', 2)
 app.listen(port, () => {
   console.log(`App listening at http://localhost:${port}`)
   handle()
