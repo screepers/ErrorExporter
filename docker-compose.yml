@@ -1,5 +1,11 @@
 version: "3"
 
+x-logging: &default-logging
+  driver: "local"
+  options:
+    max-size: "50m"
+    max-file: "1"
+
 services:
   nodejs:
     build: .
@@ -12,3 +18,4 @@ services:
       - ./logs:/usr/ErrorExporter/logs
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    logging: *default-logging
