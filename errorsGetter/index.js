@@ -76,7 +76,7 @@ async function writeErrorsByCount(userErrors) {
     }
 
     logger.info("Writing to graphite")
-    client.write({ "screeps.data.2.internationalErrors": errorsByUser }, (err) => {
+    client.write({ "data.2.screeps_com.internationalErrors": errorsByUser }, (err) => {
         if (err) logger.error(err)
     })
 
