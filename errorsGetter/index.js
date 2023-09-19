@@ -95,15 +95,21 @@ function generateText(errorByCount) {
             new Date(lastMessage.timestamp),
         )}:R>, last checked <t:${getTimestamp(new Date())}:R>`
     }
-    return errorByCount
-        .map(e => {
-            const lastSeen = `Last seen <t:${getTimestamp(new Date(e.lastSeen.date))}:R>, by ${e.lastSeen.user}${e.lastSeen.version ? `, with version ${e.lastSeen.version}` : ''
-                }\r\n`
-            const count = `Count: ${e.count}x\r\n`
-            const stack = `\`\`\`json\r\n${e.stack}\`\`\``
-            return `${lastSeen + count + stack}\r\n\r\n\r\n`
-        })
-        .join('')
+
+    let text = ''
+    for (let e = 0; e < errorByCount.length; e++) {
+        const error = errorByCount[e];
+        const lastSeen = `Last seen <t:${getTimestamp(new Date(error.lastSeen.date))}:R>, by ${error.lastSeen.user}${error.lastSeen.version ? `, with version ${error.lastSeen.version}` : ''
+            }\r\n`
+        const count = `Count: ${error.count}x\r\n`
+        const stack = `\`\`\`json\r\n${error.stack}\`\`\``
+        const finalError = `${lastSeen + count + stack}\r\n\r\n\r\n`
+        if (text.length + finalError.length > 1950) {
+            text += `And ${errorByCount.length - e} more unique errors`
+            break
+        }
+    }
+    return text;
 }
 
 async function handle() {
@@ -163,7 +169,6 @@ async function handle() {
         const webhookClient = new WebhookClient({ url: process.env.DISCORD_WEBHOOK_URL })
         const noNewErrors = lastMessage && lastMessage.content.startsWith('No errors found')
         let text = generateText(errorByCount)
-        if (text.length > 1950) text = `${text.substring(0, 1950)}...\`\`\``
         if (!noNewErrors)
             lastMessage = await webhookClient.send({
                 content: text,
