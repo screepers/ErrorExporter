@@ -1,6 +1,4 @@
 import * as dotenv from 'dotenv'
-import { join, dirname } from 'path'
-import { fileURLToPath } from 'url'
 import express from 'express'
 import cron from 'node-cron'
 import { ScreepsAPI } from 'screeps-api'
@@ -9,8 +7,6 @@ import graphite from 'graphite'
 import { WebhookClient } from 'discord.js'
 
 dotenv.config()
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
 const users = JSON.parse(fs.readFileSync('./users.json'))
 
 const app = express()
@@ -76,7 +72,7 @@ async function writeErrorsByCount(userErrors) {
     }
 
     logger.info("Writing to graphite")
-    client.write({ "data.2.screeps_com.internationalErrors": errorsByUser }, (err) => {
+    if (process.env.GRAPHITE_ONLINE) client.write({ "data.2.screeps_com.internationalErrors": errorsByUser }, (err) => {
         if (err) logger.error(err)
     })
 
@@ -108,6 +104,7 @@ function generateText(errorByCount) {
             text += `And ${errorByCount.length - e} more unique errors`
             break
         }
+        text += finalError
     }
     return text;
 }
