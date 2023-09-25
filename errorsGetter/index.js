@@ -72,7 +72,7 @@ async function writeErrorsByCount(userErrors) {
     }
 
     logger.info("Writing to graphite")
-    if (process.env.GRAPHITE_ONLINE) client.write({ "data.2.screeps_com.internationalErrors": errorsByUser }, (err) => {
+    if (process.env.GRAPHITE_ONLINE === 'TRUE') client.write({ "data.2.screeps_com.internationalErrors": errorsByUser }, (err) => {
         if (err) logger.error(err)
     })
 
