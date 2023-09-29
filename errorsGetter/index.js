@@ -1,4 +1,4 @@
-import * as dotenv from 'dotenv'
+import 'dotenv/config'
 import express from 'express'
 import cron from 'node-cron'
 import { ScreepsAPI } from 'screeps-api'
@@ -6,7 +6,6 @@ import fs from 'fs'
 import graphite from 'graphite'
 import { WebhookClient } from 'discord.js'
 
-dotenv.config()
 const users = JSON.parse(fs.readFileSync('./users.json'))
 
 const app = express()
