@@ -1,5 +1,6 @@
 node_modules
 logs
 
+docker-compose.override.yaml
 users.json
 .env
